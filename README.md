@@ -1,5 +1,8 @@
 # Motor Multi-Tenant Assíncrono para WhatsApp
 
+[![CI & Prompt Evals Quality Gate](https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp/actions/workflows/ci.yml/badge.svg)](https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp/actions/workflows/ci.yml)
+[![Repository](https://img.shields.io/badge/GitHub-IA--WPP-blue.svg)](https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp)
+
 Microsserviço assíncrono de alto desempenho desenvolvido em Python 3.12+, FastAPI, LangGraph, PostgreSQL (`pgvector` com índice HNSW), Redis e Alembic, projetado para automação conversacional em escala comercial, recuperação semântica de contexto vetorial (RAG), conciliação financeira de pagamentos e fechamento de pedidos via WhatsApp com integração à Evolution API v2.
 
 O sistema opera com isolamento rigoroso multi-tenant, permitindo que dezenas de empresas de segmentos distintos (distribuidoras, lanchonetes e pizzarias, depósitos de construção, farmácias) compartilhem a infraestrutura com segregação lógica total em nível de banco de dados, filas, locks, sessões, cache, histórico e coleções vetoriais.
@@ -224,6 +227,13 @@ Para ambiente local utilize `.env` baseado em `.env.example`, e para produção 
 
 ### 5.1. Ambiente Local (Desenvolvimento)
 
+Clone o repositório oficial da organização:
+
+```bash
+git clone https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp.git
+cd Motor-Multi-Tenant-Assincrono-para-WhatsApp
+```
+
 Suba a stack completa (PostgreSQL pgvector, Redis, Evolution API v2, API FastAPI e Worker):
 
 ```bash
@@ -245,6 +255,7 @@ Na VPS limpa como `root`:
 ```bash
 bash scripts/deploy_vps.sh
 cd /opt/whatsapp-engine
+git clone https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp.git .
 cp .env.prod.example .env
 nano .env
 bash scripts/start_prod.sh
@@ -373,3 +384,6 @@ Se qualquer cenário falhar nos critérios de segurança ou se o Score Global fo
 ## 10. Licença e Autoria
 
 Projeto concebido para operações comerciais multi-tenant de alta demanda, arquitetado sob rigorosos padrões de engenharia de software para microsserviços corporativos assíncronos.
+
+- **Organização Oficial:** [IA-WPP](https://github.com/IA-WPP)
+- **Repositório:** [Motor-Multi-Tenant-Assincrono-para-WhatsApp](https://github.com/IA-WPP/Motor-Multi-Tenant-Assincrono-para-WhatsApp)

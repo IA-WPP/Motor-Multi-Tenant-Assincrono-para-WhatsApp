@@ -82,3 +82,4 @@ async def test_prompt_evals_golden_dataset_quality_gate():
     for res in report.results:
         assert res.safety_score == 1.0, f"Falha de segurança no cenário {res.scenario_id}"
         assert res.score >= 0.85, f"Score insuficiente no cenário {res.scenario_id}: {res.score}"
+
