@@ -8,5 +8,7 @@ def configure_offline_test_defaults():
     settings.USE_REAL_EMBEDDINGS = False
     settings.SIMULATE_HUMAN_BEHAVIOR = False
     settings.DEBOUNCE_ENABLED = False
+    settings.WEBHOOK_SECRET = ""
+    settings.ADMIN_API_KEY = ""
     yield
 

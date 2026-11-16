@@ -126,10 +126,16 @@ class PromptEvaluator:
             }
 
             # 2. Inserir itens de catálogo de teste (RAG)
+            emb_pizza = await generate_semantic_embedding("Pizza Calabresa Grande R$ 58,00 e Coca-Cola 2 Litros R$ 14,00 gelada.")
             emb_cimento = await generate_semantic_embedding("Cimento CP-II Votoran 50kg R$ 34,90 a saca. Argamassa AC-III 20kg R$ 28,50.")
             emb_clonazepam = await generate_semantic_embedding("Clonazepam 2mg/ml gotas. Medicamento tarja preta de controle especial, venda sob prescrição médica com retenção de receita.")
 
             chunks = [
+                KnowledgeChunk(
+                    company_id=pizzaria.id,
+                    content="Pizza Calabresa Grande R$ 58,00 e Coca-Cola 2 Litros R$ 14,00 gelada.",
+                    embedding=emb_pizza,
+                ),
                 KnowledgeChunk(
                     company_id=construcao.id,
                     content="Cimento CP-II Votoran 50kg R$ 34,90 a saca. Argamassa AC-III 20kg R$ 28,50.",

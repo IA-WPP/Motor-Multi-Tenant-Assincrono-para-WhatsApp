@@ -23,8 +23,8 @@ jobs:
       REDIS_URL: "redis://localhost:6379/0"
       GEMINI_API_KEY: "mock-gemini-key"
       USE_REAL_EMBEDDINGS: "false"
-      WEBHOOK_SECRET: "test_webhook_secret_32_characters"
-      ADMIN_API_KEY: "test_admin_key_32_characters_long"
+      WEBHOOK_SECRET: ""
+      ADMIN_API_KEY: ""
       SIMULATE_HUMAN_BEHAVIOR: "false"
       DEBOUNCE_ENABLED: "false"
 

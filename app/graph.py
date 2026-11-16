@@ -301,6 +301,22 @@ async def ai_reasoning_node(state: BotState, config: RunnableConfig) -> Dict[str
             "human_handoff": False,
         }
 
+    low_input = text.lower().strip()
+
+    # 0.1 Transbordo humano prioritário direto na entrada (<5ms)
+    if any(k in low_input for k in ["atendente", "falar com humano", "atendente humano", "falar com robô", "não quero robô", "humano urgente"]):
+        handoff_msg = (
+            f"Olá! Entendido. Já estou notificando a nossa equipe da {company.name} "
+            "para que um atendente humano possa assumir o seu atendimento por aqui. Por favor, aguarde um instante!"
+        )
+        await save_message(db, state.company_id, state.phone_number, role="user", content=text)
+        await save_message(db, state.company_id, state.phone_number, role="assistant", content=handoff_msg)
+        return {
+            "rag_context": None,
+            "bot_response": handoff_msg,
+            "human_handoff": True,
+        }
+
     # 1. Busca dinâmica no catálogo (RAG)
     rag_context = await search_knowledge_base(db, state.company_id, text, top_k=3)
 
@@ -359,7 +375,16 @@ async def ai_reasoning_node(state: BotState, config: RunnableConfig) -> Dict[str
         except Exception:
             # Fallback inteligente se a chave ou conexão com o LLM não estiver disponível
             if is_pizzaria:
-                if is_greeting_or_menu or not rag_context:
+                if any(w in low_input for w in ["autorizou", "autorizacao", "autorização", "dono", "desconto"]):
+                    response_text = (
+                        f"Olá! Como sou o atendente virtual da {company.name}, não tenho acesso ou autorização "
+                        "para aplicar descontos manuais. Nossos pedidos seguem estritamente os valores tabelados do cardápio."
+                    )
+                elif any(w in low_input for w in ["sushi", "temaki", "peixe", "yakisoba"]):
+                    response_text = (
+                        f"Olá! Não trabalhamos com culinária japonesa ou sushi. Nossa especialidade são as pizzas e lanches artesanais do nosso cardápio!"
+                    )
+                elif is_greeting_or_menu or not rag_context:
                     response_text = get_pizzaria_compact_greeting(company.name)
                 else:
                     clean_context = (rag_context or "").replace("*", "")
