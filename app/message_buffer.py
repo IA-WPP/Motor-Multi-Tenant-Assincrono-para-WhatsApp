@@ -87,3 +87,4 @@ class MessageDebouncer:
         except Exception as exc:
             logger.warning(f"[DEBOUNCE_WARN] Erro ao aplicar debounce ({exc}). Prosseguindo com texto original.")
             return True, clean_text
+

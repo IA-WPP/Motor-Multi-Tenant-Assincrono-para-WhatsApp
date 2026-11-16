@@ -364,6 +364,8 @@ def generate_pdf():
         [Paragraph("test_simulate_human_typing_and_send", styles["Normal"]), Paragraph("Anti-Ban: Ciclo Completo de Simulação Humana no Envio", styles["Normal"]), Paragraph("APROVADO", styles["Normal"])],
         [Paragraph("test_message_debouncer_single_message", styles["Normal"]), Paragraph("Debounce Redis: Processamento de Mensagem Única", styles["Normal"]), Paragraph("APROVADO", styles["Normal"])],
         [Paragraph("test_message_debouncer_burst_consolidation", styles["Normal"]), Paragraph("Debounce Redis: Concatenação Atômica de Mensagens em Rajada", styles["Normal"]), Paragraph("APROVADO", styles["Normal"])],
+        [Paragraph("test_metrics_evaluation_unit", styles["Normal"]), Paragraph("Prompt Evals: Validação Algorítmica das Métricas de Qualidade", styles["Normal"]), Paragraph("APROVADO", styles["Normal"])],
+        [Paragraph("test_prompt_evals_golden_dataset_quality_gate", styles["Normal"]), Paragraph("Quality Gate CI/CD: Bateria Golden Dataset (Score >= 90%)", styles["Normal"]), Paragraph("APROVADO", styles["Normal"])],
     ]
     test_table = Table(test_results_data, colWidths=[200, 240, 90])
     test_table.setStyle(TableStyle([

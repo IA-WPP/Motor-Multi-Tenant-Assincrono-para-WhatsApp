@@ -452,6 +452,25 @@ async def balcao_triagem(state: BotState, config: RunnableConfig) -> Dict[str, A
             rag_parts.append(f"• *{chunk.content}*{price}")
 
         rag_text = "\n".join(rag_parts)
+
+        # Regra de Conformidade Sanitária: Medicamento de controle especial exige validação por farmacêutico
+        is_controlled = any(
+            w in rag_text.lower()
+            for w in ["tarja preta", "retenção de receita", "controle especial", "receita médica", "prescrição médica"]
+        )
+        if is_controlled:
+            response_msg = (
+                f"Localizei as seguintes opções em nosso catálogo ({state.company_name}):\n\n"
+                f"{rag_text}\n\n"
+                "Atenção: Por se tratar de medicamento de controle especial, a dispensação exige retenção de receita física. "
+                "Estou transferindo seu atendimento diretamente para o nosso farmacêutico responsável no balcão."
+            )
+            return {
+                "rag_context": rag_text,
+                "human_handoff": True,
+                "bot_response": response_msg,
+            }
+
         response_msg = (
             f"Localizei as seguintes opções em nosso catálogo ({state.company_name}):\n\n"
             f"{rag_text}\n\n"

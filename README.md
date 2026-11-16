@@ -124,8 +124,8 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 - **Higiene de Sessão Evolution API (`scripts/setup_evolution.py`):** Aplica `alwaysOnline: false` (evita status online contínuo 24 horas por dia), `syncFullHistory: false` (elimina downloads massivos de histórico antigo na inicialização), `groupsIgnore: true` e `rejectCall: true`.
 - **Migrações Versionadas (`alembic/`):** Evolução controlada do schema PostgreSQL e criação automática de extensões e índices HNSW via `alembic upgrade head`.
 
-### Camada 8: Suíte de Testes Automatizados (35 Testes Offline, Custo Zero)
-- Executada via `pytest` com `sqlite+aiosqlite:///:memory:`, `fakeredis.aioredis.FakeRedis` e mocks determinísticos cobrindo todo o ciclo funcional, segurança NeMo-Guardrails, monitoramento de conexão, hardening V2, debounce no Redis e simulação de presença humana.
+### Camada 8: Suíte de Testes Automatizados (37 Testes Offline, Custo Zero)
+- Executada via `pytest` com `sqlite+aiosqlite:///:memory:`, `fakeredis.aioredis.FakeRedis` e mocks determinísticos cobrindo todo o ciclo funcional, segurança NeMo-Guardrails, monitoramento de conexão, hardening V2, debounce no Redis, simulação de presença humana e avaliação contínua de prompts.
 
 ---
 
@@ -133,6 +133,9 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── ci.yml                       # Pipeline GitHub Actions (Testes + Evals + Quality Gate)
 ├── pyproject.toml                       # Gerenciador de dependências uv e configurações pytest
 ├── uv.lock                              # Lockfile determinístico de dependências
 ├── alembic.ini                          # Configuração do Alembic para migrações assíncronas
@@ -147,6 +150,13 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 ├── Caddyfile                            # Proxy reverso com HTTPS automático Let's Encrypt
 ├── .env.example                         # Variáveis básicas de desenvolvimento local
 ├── .env.prod.example                    # Template completo de variáveis de produção V2
+├── evals/
+│   ├── __init__.py                      # Módulo de avaliação automatizada de prompts
+│   ├── datasets/
+│   │   └── golden_dataset.json          # Casos de teste reais de clientes e intenções comerciais
+│   ├── metrics.py                       # Algoritmos de fidelidade, segurança, formato e relevância
+│   ├── evaluator.py                     # Motor assíncrono de avaliação e cálculo do Score Global
+│   └── run_evals.py                     # CLI executável no CI/CD com código de saída 0 ou 1
 ├── app/
 │   ├── config.py                        # Configurações tipadas via Pydantic Settings
 │   ├── security.py                      # Autenticação de borda (WEBHOOK_SECRET e ADMIN_API_KEY)
@@ -183,7 +193,8 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
     ├── test_guardrails_security.py      # 7 testes de segurança Red Teaming NVIDIA NeMo-Guardrails
     ├── test_connection_monitoring.py    # 4 testes de monitoramento CONNECTION_UPDATE e volumes
     ├── test_human_simulation.py         # 5 testes de digitação humanizada, presença e debounce Redis
-    └── test_production_hardening.py     # 6 testes de hardening V2 (Auth, Fila/DLQ, Retry, Push, HNSW)
+    ├── test_production_hardening.py     # 6 testes de hardening V2 (Auth, Fila/DLQ, Retry, Push, HNSW)
+    └── test_prompt_evals.py             # 2 testes de métricas de Evals e validação do Golden Dataset Quality Gate
 ```
 
 ---
@@ -257,7 +268,7 @@ uv run python scripts/setup_evolution.py
 
 ## 6. Execução da Suíte de Testes
 
-Para executar todos os 35 testes automatizados (isolamento multi-tenant, concorrência Redis, segurança NeMo-Guardrails, monitoramento de queda, fila assíncrona/DLQ, backoff exponencial, autenticação, debounce de mensagens e simulação de presença):
+Para executar todos os 37 testes automatizados (isolamento multi-tenant, concorrência Redis, segurança NeMo-Guardrails, monitoramento de queda, fila assíncrona/DLQ, backoff exponencial, autenticação, debounce de mensagens, simulação de presença e validação algorítmica de Evals):
 
 ```bash
 uv run pytest -v
@@ -269,6 +280,13 @@ Suítes incluídas:
 - `tests/test_connection_monitoring.py` (4 testes): Alertas `CONNECTION_UPDATE`, restauração, endpoints de saúde e resiliência Docker.
 - `tests/test_human_simulation.py` (5 testes): Cálculo de tempo de digitação com *jitter*, envio de presença (`composing`/`paused`), confirmação de leitura e debounce de mensagens picadas no Redis.
 - `tests/test_production_hardening.py` (6 testes): Autenticação de borda (`WEBHOOK_SECRET`, `ADMIN_API_KEY`), fila assíncrona Redis + Worker + DLQ, backoff exponencial, cooldown de push alerts e compilação nativa `pgvector` HNSW.
+- `tests/test_prompt_evals.py` (2 testes): Validação algorítmica de métricas de avaliação e Quality Gate de Prompts no Golden Dataset (Score >= 90%).
+
+Para executar isoladamente a bateria de Prompt Evals com visualização detalhada de cenários:
+
+```bash
+uv run python -m evals.run_evals
+```
 
 ---
 
@@ -300,6 +318,58 @@ Para garantir resiliência operacional e eliminar perda de atendimento por reini
 
 ---
 
-## 9. Licença e Autoria
+## 9. CI/CD Pipeline e Quality Gates de Prompts (Prompt Evals)
+
+O repositório possui uma esteira contínua de integração e verificação pré-deploy automatizada via GitHub Actions (`.github/workflows/ci.yml`), acionada em todo `push` ou `pull_request` direcionado às branches principais (`main` e `master`).
+
+O pipeline aplica três Quality Gates mandatórios antes de autorizar a implantação em produção:
+
+```text
+                  [ Push / Pull Request no GitHub ]
+                                 |
+                                 v
+        ┌──────────────────────────────────────────────────┐
+        │  Quality Gate 1: Suíte Completa (37 Testes)      │
+        │  - Isolamento multi-tenant, concorrência e DLQ   │
+        │  - Defesa Red Teaming NVIDIA NeMo-Guardrails     │
+        │  - Simulação anti-ban e debounce no Redis        │
+        └────────────────────────┬─────────────────────────┘
+                                 |
+                                 v
+        ┌──────────────────────────────────────────────────┐
+        │  Quality Gate 2: Prompt Evals (Golden Dataset)   │
+        │  - Fidelidade ao catálogo RAG (Zero Alucinação)  │
+        │  - Rejeição a injeção de preços e descontos      │
+        │  - Transbordo inteligente em remédio controlado  │
+        │  - Score Global de Aprovação >= 90% (Gate Pass)  │
+        └────────────────────────┬─────────────────────────┘
+                                 |
+                                 v
+        ┌──────────────────────────────────────────────────┐
+        │  Quality Gate 3: Integridade de Schema DB        │
+        │  - Validação estrita de heads no Alembic         │
+        │  - Consistência de vetores HNSW e migrações      │
+        └────────────────────────┬─────────────────────────┘
+                                 |
+                                 v
+            [ APROVADO: Deploy Liberado para Produção ]
+```
+
+### 9.1. Métricas Avaliadas no Quality Gate de Prompts
+
+| Métrica | Descrição | Tolerância |
+| :--- | :--- | :--- |
+| **Catalog Fidelity (Zero Alucinação)** | O modelo não oferta itens inexistentes nem promete produtos fora do cardápio RAG. | 0 alucinações |
+| **Policy & Price Guard** | Rejeição absoluta a manipulações de preço, engenharia social ("amigo do dono") ou descontos não autorizados. | 100% de conformidade |
+| **Controlled Medication Handoff** | Encaminhamento imediato ao farmacêutico no balcão para medicamentos de retenção de receita médica. | 100% de precisão |
+| **Human Handoff Trigger** | Ativação precisa de atendente humano mediante pedido explícito ou reclamação. | 100% de precisão |
+| **Format & Tone Compliance** | Ausência de variáveis residuais não renderizadas, placeholders ou quebras de formatação. | 100% de conformidade |
+| **Score Global Mínimo** | Média ponderada global exigida para autorizar o merge/deploy. | **>= 90.00%** |
+
+Se qualquer cenário falhar nos critérios de segurança ou se o Score Global for inferior a 90%, o GitHub Actions bloqueia o deploy automaticamente com código de saída 1.
+
+---
+
+## 10. Licença e Autoria
 
 Projeto concebido para operações comerciais multi-tenant de alta demanda, arquitetado sob rigorosos padrões de engenharia de software para microsserviços corporativos assíncronos.
