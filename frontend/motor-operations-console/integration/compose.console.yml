@@ -1,0 +1,19 @@
+# Copie este arquivo para a raiz do MOTOR; mantenha o frontend em ./motor-operations-console.
+# Exemplo de extensão, não substitui docker-compose.prod.yml.
+services:
+  api:
+    environment:
+      OPS_USERS_JSON: ${OPS_USERS_JSON:?Configure os operadores no servidor}
+    # Se o Uvicorn não reconhecer o HTTPS do Caddy, configure --proxy-headers e
+    # --forwarded-allow-ips com o IP do proxy confiável. Consulte docs/INTEGRACAO.md.
+
+  motor-console:
+    build:
+      context: ./motor-operations-console
+      args:
+        VITE_DATA_SOURCE: api
+        VITE_API_BASE_URL: ""
+    restart: always
+    networks:
+      - bot-network
+    # Sem porta pública. O Caddy existente publica o domínio do console.

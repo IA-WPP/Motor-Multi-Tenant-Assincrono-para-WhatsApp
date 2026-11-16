@@ -1,0 +1,19 @@
+# Acrescente este bloco ao Caddyfile existente e passe DOMAIN_CONSOLE ao Caddy.
+{$DOMAIN_CONSOLE} {
+    encode gzip zstd
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+    }
+    handle /ops-api/* {
+        header Cache-Control no-store
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+    handle {
+        reverse_proxy motor-console:80
+    }
+}

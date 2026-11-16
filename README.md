@@ -127,8 +127,8 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 - **Higiene de Sessão Evolution API (`scripts/setup_evolution.py`):** Aplica `alwaysOnline: false` (evita status online contínuo 24 horas por dia), `syncFullHistory: false` (elimina downloads massivos de histórico antigo na inicialização), `groupsIgnore: true` e `rejectCall: true`.
 - **Migrações Versionadas (`alembic/`):** Evolução controlada do schema PostgreSQL e criação automática de extensões e índices HNSW via `alembic upgrade head`.
 
-### Camada 8: Suíte de Testes Automatizados (37 Testes Offline, Custo Zero)
-- Executada via `pytest` com `sqlite+aiosqlite:///:memory:`, `fakeredis.aioredis.FakeRedis` e mocks determinísticos cobrindo todo o ciclo funcional, segurança NeMo-Guardrails, monitoramento de conexão, hardening V2, debounce no Redis, simulação de presença humana e avaliação contínua de prompts.
+### Camada 8: Suíte de Testes Automatizados (53 Testes Offline, Custo Zero)
+- Executada via `pytest` com `sqlite+aiosqlite:///:memory:`, `fakeredis.aioredis.FakeRedis` e mocks determinísticos cobrindo todo o ciclo funcional, segurança NeMo-Guardrails, monitoramento de conexão, hardening V2, debounce no Redis, simulação de presença humana, avaliação contínua de prompts e console de observabilidade.
 
 ---
 
@@ -153,6 +153,8 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 ├── Caddyfile                            # Proxy reverso com HTTPS automático Let's Encrypt
 ├── .env.example                         # Variáveis básicas de desenvolvimento local
 ├── .env.prod.example                    # Template completo de variáveis de produção V2
+├── frontend/
+│   └── motor-operations-console/        # Console de observabilidade e operações (React/Vite)
 ├── evals/
 │   ├── __init__.py                      # Módulo de avaliação automatizada de prompts
 │   ├── datasets/
@@ -163,6 +165,7 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 ├── app/
 │   ├── config.py                        # Configurações tipadas via Pydantic Settings
 │   ├── security.py                      # Autenticação de borda (WEBHOOK_SECRET e ADMIN_API_KEY)
+│   ├── ops_router.py                    # Router de observabilidade e operações (/ops-api/v1/*)
 │   ├── database.py                      # Engine async, EventDeduplicator, DistributedLock e busca SQL pgvector
 │   ├── models.py                        # Modelos SQLAlchemy 2.0 + Vector(768) com HNSW
 │   ├── schemas.py                       # Contratos Pydantic e parsers Evolution API v2
@@ -189,6 +192,7 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
 │   ├── start_test_ip.sh                 # Subida em modo teste por IP + alembic + seed
 │   ├── backup_prod.sh                   # Backup diário PostgreSQL + sessões Evolution (/evolution/instances)
 │   ├── setup_evolution.py               # Provisionamento automático de instância, webhook, higiene e QR Code
+│   ├── create_operator.py               # Gerador de credenciais de operador com PBKDF2 (600k iterações)
 │   └── generate_pdf_report.py           # Gerador do relatório PDF de testes e evidências
 └── tests/
     ├── conftest.py                      # Configuração offline determinística da suíte pytest
@@ -197,7 +201,8 @@ O microsserviço foi concebido sob os princípios de Clean Architecture, Orienta
     ├── test_connection_monitoring.py    # 4 testes de monitoramento CONNECTION_UPDATE e volumes
     ├── test_human_simulation.py         # 5 testes de digitação humanizada, presença e debounce Redis
     ├── test_production_hardening.py     # 6 testes de hardening V2 (Auth, Fila/DLQ, Retry, Push, HNSW)
-    └── test_prompt_evals.py             # 2 testes de métricas de Evals e validação do Golden Dataset Quality Gate
+    ├── test_prompt_evals.py             # 2 testes de métricas de Evals e validação do Golden Dataset Quality Gate
+    └── test_ops_router.py               # 16 testes de autorização, autenticação PBKDF2 e isolamento de rotas Ops
 ```
 
 ---
@@ -216,6 +221,8 @@ Para ambiente local utilize `.env` baseado em `.env.example`, e para produção 
 | `ADMIN_API_KEY` | Chave Bearer / `X-Admin-Key` das rotas administrativas | `admin_key_32_chars` |
 | `ASYNC_QUEUE_ENABLED` | Ativa ingestão via fila Redis + Worker dedicado | `true` |
 | `ALERT_WEBHOOK_URL` | Webhook externo (Slack/Discord/n8n) para alertas de queda | `https://hooks.exemplo/alert` |
+| `OPS_USERS_JSON` | Dicionário JSON com hashes PBKDF2 de operadores do Console | `'{"operador": {...}}'` |
+| `OPS_ALLOW_HTTP_LOCAL` | Permite HTTP para desenvolvimento local do Console | `false` |
 | `SIMULATE_HUMAN_BEHAVIOR` | Ativa simulação de presença humana e read receipts com atraso | `true` |
 | `DEBOUNCE_ENABLED` | Ativa buffer e consolidação de mensagens picadas no Redis | `true` |
 | `DEBOUNCE_WAIT_SECONDS` | Janela de tempo em segundos para consolidação de mensagens | `3.0` |
@@ -279,7 +286,7 @@ uv run python scripts/setup_evolution.py
 
 ## 6. Execução da Suíte de Testes
 
-Para executar todos os 37 testes automatizados (isolamento multi-tenant, concorrência Redis, segurança NeMo-Guardrails, monitoramento de queda, fila assíncrona/DLQ, backoff exponencial, autenticação, debounce de mensagens, simulação de presença e validação algorítmica de Evals):
+Para executar todos os 53 testes automatizados (isolamento multi-tenant, concorrência Redis, segurança NeMo-Guardrails, monitoramento de queda, fila assíncrona/DLQ, backoff exponencial, autenticação, debounce de mensagens, simulação de presença, validação de Evals e autorização do Console Ops):
 
 ```bash
 uv run pytest -v
@@ -292,6 +299,7 @@ Suítes incluídas:
 - `tests/test_human_simulation.py` (5 testes): Cálculo de tempo de digitação com *jitter*, envio de presença (`composing`/`paused`), confirmação de leitura e debounce de mensagens picadas no Redis.
 - `tests/test_production_hardening.py` (6 testes): Autenticação de borda (`WEBHOOK_SECRET`, `ADMIN_API_KEY`), fila assíncrona Redis + Worker + DLQ, backoff exponencial, cooldown de push alerts e compilação nativa `pgvector` HNSW.
 - `tests/test_prompt_evals.py` (2 testes): Validação algorítmica de métricas de avaliação e Quality Gate de Prompts no Golden Dataset (Score >= 90%).
+- `tests/test_ops_router.py` (16 testes): Autenticação PBKDF2 (600k iterações), isolamento de escopo por operador, mascaramento de telefones, paginação de sessões, eventos sem vazamento e cálculo de métricas.
 
 Para executar isoladamente a bateria de Prompt Evals com visualização detalhada de cenários:
 
@@ -310,6 +318,13 @@ uv run python -m evals.run_evals
 | `GET` | `/api/instances/health` | `ADMIN_API_KEY` | Monitoramento global de saúde e disponibilidade das instâncias WhatsApp. |
 | `GET` | `/api/companies/{id}/connection-status` | `ADMIN_API_KEY` | Status em tempo real, duração de queda e alertas de reconexão por empresa. |
 | `GET` | `/audit/logs/{company_id}` | `ADMIN_API_KEY` | Consulta da trilha de auditoria e telemetria filtrada estritamente por tenant. |
+| `GET` | `/ops-api/v1/session` | HTTP Basic (Ops) | Sessão do operador, permissão global e tenants autorizados. |
+| `GET` | `/ops-api/v1/overview` | HTTP Basic (Ops) | KPIs agregados, 24 buckets de throughput e latências de processamento. |
+| `GET` | `/ops-api/v1/conversations` | HTTP Basic (Ops) | Inbox paginado de conversas, mensagens e estado do grafo. |
+| `GET` | `/ops-api/v1/events` | HTTP Basic (Ops) | Feed de auditoria recente e telemetria sem expor payloads brutos. |
+| `GET` | `/ops-api/v1/instances` | HTTP Basic (Ops) | Instâncias WhatsApp ativas e estado observado. |
+| `GET` | `/ops-api/v1/queues` | HTTP Basic (Ops) | Profundidade das filas Redis (exclusivo para visão global autorizada). |
+| `GET` | `/ops-api/v1/orders` | HTTP Basic (Ops) | Histórico recente de pedidos com dados de clientes mascarados. |
 | `GET` | `/docs` | Pública | Documentação interativa OpenAPI / Swagger UI. |
 
 ---
@@ -381,7 +396,36 @@ Se qualquer cenário falhar nos critérios de segurança ou se o Score Global fo
 
 ---
 
-## 10. Licença e Autoria
+## 10. Console de Operações e Observabilidade (Frontend & Ops API)
+
+O projeto inclui o **Motor Operations Console** (`frontend/motor-operations-console`), uma aplicação SPA moderna e responsiva desenvolvida em React, TypeScript e Vite para supervisão operacional, diagnóstico em tempo real e atendimento.
+
+### 10.1. Características de Engenharia e Segurança
+- **Módulo Aditivo e Isolado (`app/ops_router.py`):** Expõe as rotas `/ops-api/v1/*` de forma desacoplada, sem modificar os endpoints existentes e sem utilizar `ADMIN_API_KEY`.
+- **Autenticação Segura via PBKDF2:** Senhas de operadores são armazenadas no servidor usando PBKDF2-HMAC-SHA256 com salt aleatório de 16 bytes e 600.000 iterações (`scripts/create_operator.py`). O frontend mantém credenciais apenas em memória, sem persistir tokens em `localStorage` ou `cookies`.
+- **Controle Estrito de Escopo Multi-Tenant:** Operadores restritos só acessam dados dos tenants expressamente permitidos em `tenant_ids`. A visão consolidada global é reservada a administradores (`global_access: true`).
+- **Privacidade por Padrão:** Telefones de clientes são mascarados em todas as visualizações (`•• •••••-1234`), e payloads brutos com potenciais dados sensíveis não são trafegados no feed de eventos.
+- **Transparência de Métricas:** KPIs calculam valores reais de banco de dados (conversas ativas, mensagens processadas, handoffs humanos e latências de inferência), indicando explicitamente quando uma métrica depende de infraestrutura adicional (ex: tracing distribuído ou heartbeat de workers).
+
+### 10.2. Geração de Credenciais de Operador
+
+Para criar um novo operador com hash seguro para o `OPS_USERS_JSON`:
+
+```bash
+uv run python scripts/create_operator.py
+```
+
+### 10.3. Execução do Frontend em Desenvolvimento
+
+```bash
+cd frontend/motor-operations-console
+npm ci
+npm run dev
+```
+
+---
+
+## 11. Licença e Autoria
 
 Projeto concebido para operações comerciais multi-tenant de alta demanda, arquitetado sob rigorosos padrões de engenharia de software para microsserviços corporativos assíncronos.
 

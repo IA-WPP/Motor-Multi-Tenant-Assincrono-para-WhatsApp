@@ -55,6 +55,12 @@ def get_redis_client():
     return redis_client
 
 
+# Inclusão do Console de Operações e Observabilidade (Rotas /ops-api/v1/*)
+from app.ops_router import create_ops_router
+
+app.include_router(create_ops_router(get_redis_client))
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""

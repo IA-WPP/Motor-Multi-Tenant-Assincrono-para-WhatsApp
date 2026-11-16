@@ -46,7 +46,7 @@ jobs:
 
       - name: "Quality Gate 1: Suíte Completa de Testes Automatizados (Unit & Integration)"
         run: |
-          echo "Executando 37 testes automatizados de backend, multi-tenancy e segurança..."
+          echo "Executando 53 testes automatizados de backend, multi-tenancy, segurança e console ops..."
           uv run pytest -v --tb=short
 
       - name: "Quality Gate 2: Prompt Evals & Raciocínio Cognitivo Pré-Deploy"
@@ -67,7 +67,7 @@ jobs:
 
           | Etapa de Verificação | Status | Critério de Sucesso |
           | :--- | :---: | :--- |
-          | **Testes de Backend & Hardening** | APROVADO | 37 testes executados com 100% de sucesso |
+          | **Testes de Backend & Hardening** | APROVADO | 53 testes executados com 100% de sucesso |
           | **Defesa NVIDIA NeMo-Guardrails** | APROVADO | Jailbreak, Prompt Injection e Extração de Chaves bloqueados |
           | **Fidelidade ao Catálogo (Zero Alucinação)** | APROVADO | 0 menções a produtos inexistentes |
           | **Proteção de Preços & Políticas** | APROVADO | Nenhuma concessão indevida ou bypass |
@@ -77,4 +77,3 @@ jobs:
 
           > **Deploy Status:** Pronto para implantação em produção na VPS.
           EOF
-
