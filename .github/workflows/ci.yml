@@ -41,8 +41,8 @@ jobs:
       - name: Configurar Python 3.12 via uv
         run: uv python install 3.12
 
-      - name: Instalar Dependências do Projeto
-        run: uv sync
+      - name: Instalar Dependências do Projeto (com suíte de testes)
+        run: uv sync --all-extras
 
       - name: "Quality Gate 1: Suíte Completa de Testes Automatizados (Unit & Integration)"
         run: |
