@@ -25,11 +25,10 @@ def calculate_human_typing_delay(
     min_d = min_delay if min_delay is not None else settings.HUMAN_MIN_TYPING_DELAY
     max_d = max_delay if max_delay is not None else settings.HUMAN_MAX_TYPING_DELAY
 
-    # Média de digitação humana no celular/web (~25 a 35 caracteres por segundo)
-    base = len(text) * 0.015
-    jitter = random.uniform(0.3, 0.9)
-    total = base + jitter
-    return min(max_d, max(min_d, total))
+    # Base proporcional limitada e acrescida de jitter estocástico
+    base = max(min_d, min(max_d, len(text) * 0.015))
+    jitter = random.uniform(0.15, 0.65)
+    return round(base + jitter, 3)
 
 
 async def send_presence(
